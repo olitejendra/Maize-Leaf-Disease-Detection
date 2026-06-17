@@ -356,26 +356,26 @@ class _DiseaseGuideGrid extends StatelessWidget {
   final _diseases = const [
     {
       'name': 'Northern Leaf Blight',
-      'emoji': '🍃',
-      'severity': 'High',
+      // 'emoji': '🍃',
+      // 'severity': 'High',
       'color': 0xFF6B7C4A,
     },
     {
       'name': 'Gray Leaf Spot',
-      'emoji': '🌫️',
-      'severity': 'High',
+      // 'emoji': '🌫️',
+      // 'severity': 'High',
       'color': 0xFF8C8C7A,
     },
     {
       'name': 'Common Rust',
-      'emoji': '🦀',
-      'severity': 'Medium',
+      // 'emoji': '🦀',
+      // 'severity': 'Medium',
       'color': 0xFFB85C38,
     },
     {
       'name': 'Healthy Leaf',
-      'emoji': '✅',
-      'severity': 'None',
+      // 'emoji': '✅',
+      // 'severity': 'None',
       'color': 0xFF2D6A4F,
     },
   ];
@@ -411,16 +411,10 @@ class _DiseaseGuideGrid extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      d['emoji'] as String,
-                      style: const TextStyle(fontSize: 22),
-                    ),
-                    _SeverityBadge(d['severity'] as String),
-                  ],
-                ),
+                // Align(
+                //   alignment: Alignment.centerRight,
+                //   child: _SeverityBadge(d['severity'] as String),
+                // ),
                 Text(
                   d['name'] as String,
                   style: TextStyle(
@@ -438,6 +432,7 @@ class _DiseaseGuideGrid extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SeverityBadge extends StatelessWidget {
   final String severity;
   const _SeverityBadge(this.severity);

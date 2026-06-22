@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
-import '../models/disease_model.dart';
+import 'package:maize_disease_app/utils/disease_mapper.dart';
+import 'package:maize_disease_app/theme/app_theme.dart';
 import 'result_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:maize_disease_app/services/api_service.dart';
 
 class ScanScreen extends StatefulWidget {
   final bool fromGallery;
@@ -20,6 +21,8 @@ class _ScanScreenState extends State<ScanScreen>
   int _analyzeStep = 0;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
+
+  final ApiService apiService = ApiService();
 
   final List<String> _analyzeSteps = [
     'Preprocessing image...',
@@ -90,31 +93,67 @@ class _ScanScreenState extends State<ScanScreen>
     );
   }
 
+  // Future<void> _startAnalysis() async {
+  //   setState(() {
+  //     _isAnalyzing = true;
+  //     _analyzeStep = 0;
+  //   });
+
+  //   // Simulate CNN processing steps
+  //   for (int i = 0; i < _analyzeSteps.length; i++) {
+  //     await Future.delayed(const Duration(milliseconds: 700));
+  //     if (mounted) setState(() => _analyzeStep = i);
+  //   }
+  //   await Future.delayed(const Duration(milliseconds: 500));
+
+  //   if (mounted) {
+  //     setState(() => _isAnalyzing = false);
+  //     // Navigate to result with a demo disease
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (_) => ResultScreen(
+  //           disease: DiseaseDatabase.diseases[0],
+  //           confidence: 92.4,
+  //           imagePath: _selectedImage?.path,
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
   Future<void> _startAnalysis() async {
+    if (_selectedImage == null) return;
+
     setState(() {
       _isAnalyzing = true;
       _analyzeStep = 0;
     });
 
-    // Simulate CNN processing steps
-    for (int i = 0; i < _analyzeSteps.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 700));
-      if (mounted) setState(() => _analyzeStep = i);
-    }
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final result = await apiService.predictDisease(_selectedImage!);
 
-    if (mounted) {
+      final disease = DiseaseMapper.fromApi(
+        result["prediction"],
+        result["confidence"]?.toDouble() ?? 0,
+      );
+
       setState(() => _isAnalyzing = false);
-      // Navigate to result with a demo disease
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => ResultScreen(
-            disease: DiseaseDatabase.diseases[0],
-            confidence: 92.4,
+            disease: disease,
+            confidence: result["confidence"]?.toDouble() ?? 0,
             imagePath: _selectedImage?.path,
           ),
         ),
+      );
+    } catch (e) {
+      setState(() => _isAnalyzing = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("API Error: $e")),
       );
     }
   }

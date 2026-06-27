@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:maize_disease_app/utils/disease_mapper.dart';
-import 'package:maize_disease_app/theme/app_theme.dart';
+import '../theme/app_theme.dart';
+import '../models/disease_model.dart';
 import 'result_screen.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:maize_disease_app/services/api_service.dart';
+import '../services/api_service.dart';
 
 class ScanScreen extends StatefulWidget {
   final bool fromGallery;
@@ -21,8 +21,6 @@ class _ScanScreenState extends State<ScanScreen>
   int _analyzeStep = 0;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
-
-  final ApiService apiService = ApiService();
 
   final List<String> _analyzeSteps = [
     'Preprocessing image...',
@@ -93,67 +91,91 @@ class _ScanScreenState extends State<ScanScreen>
     );
   }
 
-  // Future<void> _startAnalysis() async {
-  //   setState(() {
-  //     _isAnalyzing = true;
-  //     _analyzeStep = 0;
-  //   });
-
-  //   // Simulate CNN processing steps
-  //   for (int i = 0; i < _analyzeSteps.length; i++) {
-  //     await Future.delayed(const Duration(milliseconds: 700));
-  //     if (mounted) setState(() => _analyzeStep = i);
-  //   }
-  //   await Future.delayed(const Duration(milliseconds: 500));
-
-  //   if (mounted) {
-  //     setState(() => _isAnalyzing = false);
-  //     // Navigate to result with a demo disease
-  //     Navigator.push(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (_) => ResultScreen(
-  //           disease: DiseaseDatabase.diseases[0],
-  //           confidence: 92.4,
-  //           imagePath: _selectedImage?.path,
-  //         ),
-  //       ),
-  //     );
-  //   }
-  // }
   Future<void> _startAnalysis() async {
-    if (_selectedImage == null) return;
+    if (_selectedImage == null) {
+      // Demo mode — navigate with hardcoded data (keep existing demo behavior)
+      setState(() {
+        _isAnalyzing = true;
+        _analyzeStep = 0;
+      });
+      for (int i = 0; i < _analyzeSteps.length; i++) {
+        await Future.delayed(const Duration(milliseconds: 700));
+        if (mounted) setState(() => _analyzeStep = i);
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ResultScreen(
+                disease: DiseaseDatabase.diseases[0],
+                confidence: 92.4,
+                imagePath: null,
+              ),
+            ));
+      }
+      return;
+    }
 
+    // ── Real API call ──────────────────────────────────────────────────────────
     setState(() {
       _isAnalyzing = true;
       _analyzeStep = 0;
     });
 
+    // Animate the steps while the API call runs in parallel
+    final apiCall = ApiService.predictDisease(_selectedImage!);
+
+    for (int i = 0; i < _analyzeSteps.length - 1; i++) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (mounted) setState(() => _analyzeStep = i + 1);
+    }
+
     try {
-      final result = await apiService.predictDisease(_selectedImage!);
-
-      final disease = DiseaseMapper.fromApi(
-        result["prediction"],
-        result["confidence"]?.toDouble() ?? 0,
-      );
-
+      final result = await apiCall; // wait for the real response
+      if (!mounted) return;
       setState(() => _isAnalyzing = false);
+
+      // Map API result → DiseaseModel for ResultScreen
+      final disease = DiseaseInfo(
+        id: result.disease.toLowerCase().replaceAll(' ', '_'),
+        name: result.disease,
+        scientificName: '',
+        severity: result.severity,
+        description: result.description,
+        symptoms: [],
+        causes: [],
+        suggestions: result.treatment.isNotEmpty
+            ? result.treatment
+                .split('.')
+                .where((s) => s.trim().isNotEmpty)
+                .toList()
+            : [],
+        iconEmoji: result.isHealthy ? '✅' : '🍃',
+        colorHex: result.isHealthy ? 0xFF2D6A4F : 0xFF6B7C4A,
+        isHealthy: result.isHealthy,
+        prevention: result.prevention,
+        treatment: result.treatment,
+      );
 
       Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultScreen(
-            disease: disease,
-            confidence: result["confidence"]?.toDouble() ?? 0,
-            imagePath: _selectedImage?.path,
-          ),
-        ),
-      );
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResultScreen(
+              disease: disease,
+              confidence: result.confidence,
+              imagePath: _selectedImage!.path,
+            ),
+          ));
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isAnalyzing = false);
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("API Error: $e")),
+        SnackBar(
+          content: Text('Analysis failed: ${e.toString()}'),
+          backgroundColor: Colors.red.shade700,
+        ),
       );
     }
   }

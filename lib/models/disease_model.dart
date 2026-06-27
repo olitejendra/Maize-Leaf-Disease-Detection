@@ -9,6 +9,9 @@ class DiseaseInfo {
   final List<String> suggestions;
   final String iconEmoji;
   final int colorHex;
+  final bool isHealthy;
+  final String prevention;
+  final String treatment;
 
   const DiseaseInfo({
     required this.id,
@@ -21,6 +24,9 @@ class DiseaseInfo {
     required this.suggestions,
     required this.iconEmoji,
     required this.colorHex,
+    this.isHealthy = false,
+    this.prevention = '',
+    this.treatment = '',
   });
 }
 
